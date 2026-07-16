@@ -162,35 +162,51 @@
               </tr>
             </thead>
             <tbody>
-              <template x-show="tableLoading">
-                <tr><td colspan="2" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> กำลังอัปเดตตาราง...</td></tr>
-              </template>
-              <template x-show="!tableLoading && paginatedItems.length === 0">
-                <tr><td colspan="2" class="text-center text-muted py-4">❌ ไม่พบรายการเดินทางในระบบ</td></tr>
-              </template>
-              <template x-for="book in paginatedItems" :key="book.invoiceId">
-                <tr>
-                  <td>
-                    <div class="fw-bold text-dark" x-text="book.customerName"></div>
-                    <small class="text-muted">
-                      🆔 <span x-text="book.invoiceId"></span> | 
-                      <span class="badge" :class="{
-                        'bg-success': book.status === 'Completed',
-                        'bg-primary': book.status === 'Processing',
-                        'bg-warning text-dark': book.status === 'On-hold',
-                        'bg-secondary': book.status !== 'Completed' && book.status !== 'Processing' && book.status !== 'On-hold'
-                      }" x-text="book.status"></span>
-                    </small><br>
-                    <small class="text-primary fw-semibold">📅 <span x-text="book.checkIn"></span> ถึง <span x-text="book.checkOut"></span></small>
-                  </td>
-                  <td class="text-center">
-                    <div class="d-flex flex-column gap-1">
-                      <button type="button" class="btn btn-warning btn-sm fw-bold px-2 py-1" @click="actionEditBooking(book.invoiceId)">✏️ Edit</button>
-                      <a x-if="book.pdfUrl && book.pdfUrl.startsWith('http')" :href="book.pdfUrl" target="_blank" class="btn btn-success btn-sm fw-bold px-2 py-1">👁️ View</a>
-                    </div>
-                  </td>
-                </tr>
-              </template>
+  <!-- 📅 1. กล่องสถานะกำลังโหลด (ใช้ <template x-if="..."> และครอบด้วย <tr>) -->
+  <template x-if="tableLoading">
+    <tr>
+      <td colspan="2" class="text-center py-4">
+        <div class="spinner-border spinner-border-sm text-primary"></div> กำลังอัปเดตตาราง...
+      </td>
+    </tr>
+  </template>
+
+  <!-- ❌ 2. กล่องกรณีไม่พบข้อมูล -->
+  <template x-if="!tableLoading && allBookingsData.length === 0">
+    <tr>
+      <td colspan="2" class="text-center text-muted py-4">❌ ไม่พบรายการเดินทางในระบบ</td>
+    </tr>
+  </template>
+
+  <!-- 🔄 3. การวนลูปตารางการจอง (x-for ต้องมีตัวครอบชิ้นเดียวคือ <tr>) -->
+  <template x-for="book in paginatedItems" :key="book.invoiceId">
+    <tr>
+      <td>
+        <div class="fw-bold text-dark" x-text="book.customerName"></div>
+        <small class="text-muted">
+          🆔 <span x-text="book.invoiceId"></span> | 
+          <span class="badge" :class="{
+            'bg-success': book.status === 'Completed',
+            'bg-primary': book.status === 'Processing',
+            'bg-warning text-dark': book.status === 'On-hold',
+            'bg-secondary': book.status !== 'Completed' && book.status !== 'Processing' && book.status !== 'On-hold'
+          }" x-text="book.status"></span>
+        </small><br>
+        <small class="text-primary fw-semibold">📅 <span x-text="book.checkIn"></span> ถึง <span x-text="book.checkOut"></span></small>
+      </td>
+      <td class="text-center">
+        <div class="d-flex flex-column gap-1">
+          <button type="button" class="btn btn-warning btn-sm fw-bold px-2 py-1" @click="actionEditBooking(book.invoiceId)">✏️ Edit</button>
+          
+          <!-- 🎯 แก้ไขปุ่ม View: ใช้ x-show บนตัวแท็ก <a> เพื่อเช็กว่ามีลิงก์ PDF หรือไม่ -->
+          <a x-show="book.pdfUrl && book.pdfUrl.startsWith('http')" 
+             :href="book.pdfUrl" 
+             target="_blank" 
+             class="btn btn-success btn-sm fw-bold px-2 py-1">👁️ View</a>
+        </div>
+      </td>
+    </tr>
+  </template>
             </tbody>
           </table>
         </div>
