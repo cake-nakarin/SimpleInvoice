@@ -258,21 +258,25 @@
           }
         },
 
-        // ดึงข้อมูล Preset สินค้า Auto-complete ผ่าน API แบบเงียบๆ
-        async initPresets() {
-          try {
-            const res = await fetch(`${this.webAppUrl}?action=getPresets`);
-            const data = await res.json();
-            this.productPresets = data || [];
-            const datalist = document.getElementById('presetItemsList');
-            datalist.innerHTML = '';
-            this.productPresets.forEach(item => {
-              const option = document.createElement('option');
-              option.value = item.name;
-              datalist.appendChild(option);
-            });
-          } catch(e) { console.error("โหลด Preset ผิดพลาด", e); }
-        },
+        // 1. ฟังก์ชันโหลดคำค้นหาพรีเซตสินค้า
+async initPresets() {
+  try {
+    const res = await fetch(this.webAppUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'getPresets' }) // 👈 เปลี่ยนมายิงเป็นก้อน POST
+    });
+    const data = await res.json();
+    this.productPresets = data || [];
+    const datalist = document.getElementById('presetItemsList');
+    datalist.innerHTML = '';
+    this.productPresets.forEach(item => {
+      const option = document.createElement('option');
+      option.value = item.name;
+      datalist.appendChild(option);
+    });
+  } catch(e) { console.error("โหลด Preset ผิดพลาด", e); }
+},
 
         handleItemNameInput(el, index) {
           const matched = this.productPresets.find(p => p.name.toLowerCase() === el.value.toLowerCase());
@@ -282,16 +286,20 @@
           }
         },
 
-        // ดึงรายชื่อตารางจองลูกค้าเดินทางผ่าน API
-        async loadBookingTableData() {
-          this.tableLoading = true;
-          try {
-            const res = await fetch(`${this.webAppUrl}?action=getBookings&date=${this.filterTravelDate}`);
-            this.allBookingsData = await res.json() || [];
-            this.currentPage = 1;
-          } catch(e) { console.error(e); }
-          this.tableLoading = false;
-        },
+  // 2. ฟังก์ชันดึงรายชื่อตารางจองลูกค้าเดินทาง
+async loadBookingTableData() {
+  this.tableLoading = true;
+  try {
+    const res = await fetch(this.webAppUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'getBookings', date: this.filterTravelDate }) // 👈 เปลี่ยนเป็น POST
+    });
+    this.allBookingsData = await res.json() || [];
+    this.currentPage = 1;
+  } catch(e) { console.error(e); }
+  this.tableLoading = false;
+},
 
         get paginatedItems() {
           const start = (this.currentPage - 1) * this.rowsPerPage;
@@ -311,29 +319,33 @@
           this.loadBookingTableData();
         },
 
-        // 🔍 ค้นหาบิลเก่าดึงกลับมาแก้ไขแบบข้าม iframe ของจริง
-        async searchInvoice() {
-          if (!this.searchKeyword) return alert('กรุณากรอกคำค้นหาก่อนครับ');
-          this.searchLoading = true;
-          try {
-            const res = await fetch(`${this.webAppUrl}?action=search&keyword=${encodeURIComponent(this.searchKeyword)}`);
-            const result = await res.json();
-            if (result.status === 'SUCCESS') {
-              this.payload.rowNumber = result.data.rowNumber;
-              this.payload.invoiceNumber = result.data.invoiceNumber;
-              this.payload.customerName = result.data.customerName;
-              this.payload.customerPhone = result.data.customerPhone || '';
-              this.payload.customerContact = result.data.customerContact || '';
-              this.payload.paymentStatus = result.data.paymentStatus || 'Pending';
-              this.payload.discount = result.data.discount || 0;
-              if(result.data.checkInDate) this.payload.checkInDate = this.formatDate(result.data.checkInDate);
-              if(result.data.checkOutDate) this.payload.checkOutDate = this.formatDate(result.data.checkOutDate);
-              this.payload.items = result.data.items || [];
-              alert('ดึงข้อมูลบิลเลขที่ ' + result.data.invoiceNumber + ' เรียบร้อย');
-            } else { alert(result.message); }
-          } catch(e) { alert('ระบบค้นหาขัดข้อง'); }
-          this.searchLoading = false;
-        },
+        // 3. ฟังก์ชันค้นหาบิลเก่าดึงกลับมาแก้ไข
+async searchInvoice() {
+  if (!this.searchKeyword) return alert('กรุณากรอกคำค้นหาก่อนครับ');
+  this.searchLoading = true;
+  try {
+    const res = await fetch(this.webAppUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'search', keyword: this.searchKeyword }) // 👈 เปลี่ยนเป็น POST
+    });
+    const result = await res.json();
+    if (result.status === 'SUCCESS') {
+      this.payload.rowNumber = result.data.rowNumber;
+      this.payload.invoiceNumber = result.data.invoiceNumber;
+      this.payload.customerName = result.data.customerName;
+      this.payload.customerPhone = result.data.customerPhone || '';
+      this.payload.customerContact = result.data.customerContact || '';
+      this.payload.paymentStatus = result.data.paymentStatus || 'Pending';
+      this.payload.discount = result.data.discount || 0;
+      if(result.data.checkInDate) this.payload.checkInDate = this.formatDate(result.data.checkInDate);
+      if(result.data.checkOutDate) this.payload.checkOutDate = this.formatDate(result.data.checkOutDate);
+      this.payload.items = result.data.items || [];
+      alert('ดึงข้อมูลบิลเลขที่ ' + result.data.invoiceNumber + ' เรียบร้อย');
+    } else { alert(result.message); }
+  } catch(e) { alert('ระบบค้นหาขัดข้อง'); }
+  this.searchLoading = false;
+},
 
         // 💾 บันทึกสร้างใหม่ หรือ เซฟงานแก้ไข
         async submitInvoice() {
