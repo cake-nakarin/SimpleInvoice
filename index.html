@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบสร้างใบแจ้งหนี้ (Responsive)</title>
+    <!-- 1. ดึง Alpine.js และ CSS Framework (เช่น Tailwind) มาตกแต่งสวยๆ -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+
+    <div x-data="invoiceApp()" class="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-sm">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800">📝 ออกใบแจ้งหนี้ใหม่</h2>
+        
+        <!-- ส่วนฟอร์มข้อมูลลูกค้า (Responsive เต็มหน้าจอมือถือแน่นอน) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">ชื่อลูกค้า</label>
+                <input type="text" x-model="customerName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-50">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">เบอร์โทรศัพท์</label>
+                <input type="text" x-model="customerPhone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-50">
+            </div>
+        </div>
+
+        <!-- ตารางรายการสินค้า/บริการ -->
+        <div class="overflow-x-auto mb-6">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-slate-800 text-white">
+                    <tr>
+                        <th class="p-3 text-left text-xs font-medium uppercase">ลำดับ</th>
+                        <th class="p-3 text-left text-xs font-medium uppercase">รายการสินค้า/บริการ</th>
+                        <th class="p-3 text-right text-xs font-medium uppercase">ราคา/หน่วย</th>
+                        <th class="p-3 text-center text-xs font-medium uppercase">จำนวน</th>
+                        <th class="p-3 text-center"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    <template x-for="(item, index) in items" :key="index">
+                        <tr>
+                            <td class="p-3 text-sm text-gray-500" x-text="index + 1"></td>
+                            <td class="p-3"><input type="text" x-model="item.name" class="w-full p-1 border rounded"></td>
+                            <td class="p-3"><input type="number" x-model.number="item.unitPrice" class="w-24 p-1 border rounded text-right"></td>
+                            <td class="p-3"><input type="number" x-model.number="item.quantity" class="w-16 p-1 border rounded text-center"></td>
+                            <td class="p-3 text-center">
+                                <button @click="removeItem(index)" class="text-red-500 hover:text-red-700 font-bold">❌</button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+
+        <button @click="addItem()" class="mb-6 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md text-sm">➕ เพิ่มรายการสินค้า</button>
+
+        <!-- ปุ่มกดบันทึกยิงข้อมูลออกภายนอก iframe -->
+        <div class="border-t pt-4 flex justify-end">
+            <button @click="submitToGoogle()" :disabled="loading" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-md shadow-sm disabled:bg-gray-400">
+                <span x-show="!loading">💾 บันทึกและออกบิล PDF</span>
+                <span x-show="loading">⏳ กำลังบันทึกข้อมูล...</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+    function invoiceApp() {
+        return {
+            customerName: '',
+            customerPhone: '',
+            items: [{ name: '', unitPrice: 0, quantity: 1 }],
+            loading: false,
+            
+            addItem() {
+                this.items.push({ name: '', unitPrice: 0, quantity: 1 });
+            },
+            removeItem(index) {
+                if(this.items.length > 1) this.items.splice(index, 1);
+            },
+            async submitToGoogle() {
+                this.loading = true;
+                
+                // เตรียม Payload ข้อมูลทั้งหมดในฟอร์ม
+                const payload = {
+                    customerName: this.customerName,
+                    customerPhone: this.customerPhone,
+                    items: this.items
+                };
+                
+                // 🎯 เอาลิงก์ Web App URL ที่ได้จากข้อ 1 มาใส่ตรงนี้
+                const apiURL = 'https://script.google.com/macros/s/XXXXX_YOUR_WEB_APP_ID_XXXXX/exec';
+                
+                try {
+                    const response = await fetch(apiURL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain' }, // ส่งแบบ text/plain ดิบๆ เพื่อหลบปัญหา CORS Preflight
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const result = await response.json();
+                    if (result.status === 'SUCCESS') {
+                        alert('บันทึกสำเร็จ!');
+                        // สั่งให้บราวเซอร์กระโดดข้าม iframe เปิดแท็บใหม่ดู PDF ทันที
+                        window.open(result.pdfUrl, '_blank');
+                    } else {
+                        alert('เกิดข้อผิดพลาดจากหลังบ้าน: ' + result.message);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('ไม่สามารถติดต่อเซิร์ฟเวอร์ Google ได้');
+                } finally {
+                    this.loading = false;
+                }
+            }
+        }
+    }
+    </script>
+</body>
+</html>
